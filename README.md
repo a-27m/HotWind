@@ -149,11 +149,44 @@ GROUP BY ld.sku, hm.model_name;
 - **Database**: PostgreSQL 17
 - **Tests**: xUnit, Moq
 
+## Docker Deployment
+
+Pre-built Docker images are available on Docker Hub:
+
+```bash
+# Run API
+docker run -p 8080:8080 \
+  -e ConnectionStrings__DefaultConnection="Host=postgres;Database=hotwind;..." \
+  number_27/hotwind-api:latest
+
+# Run CLI
+docker run -it \
+  -e ApiSettings__BaseUrl="http://api:8080" \
+  number_27/hotwind-cli:latest
+```
+
+See **[DOCKER.md](DOCKER.md)** for complete deployment guide including Kubernetes best practices.
+
 ## Documentation
 
 - **[DATABASE.md](DATABASE.md)** - Complete schema documentation with ER diagram
 - **[ADR.md](ADR.md)** - Architecture decisions and design patterns
 - **[SETUP.md](SETUP.md)** - Detailed setup guide and troubleshooting
+- **[DOCKER.md](DOCKER.md)** - Docker and Kubernetes deployment guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines and commit conventions
+
+## CI/CD
+
+This project uses GitHub Actions for automated:
+- Build and test on every push
+- Semantic versioning based on conventional commits
+- Multi-architecture Docker image builds (amd64, arm64)
+- Automated releases to Docker Hub and GitHub
+
+Commit message format determines version bumps:
+- `feat:` → Minor version (1.0.0 → 1.1.0)
+- `fix:` → Patch version (1.0.0 → 1.0.1)
+- `feat!:` or `BREAKING CHANGE:` → Major version (1.0.0 → 2.0.0)
 
 ## License
 

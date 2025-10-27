@@ -1,0 +1,111 @@
+name: Pull Request Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  lint-commits:
+    name: Lint Commit Messages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        run: |
+          echo "Checking commit messages for conventional commits format..."
+          ERRORS=0
+
+          # Get all commits in this PR
+          COMMITS=$(git log origin/main..HEAD --oneline)
+
+          while IFS= read -r commit; do
+            MESSAGE=$(echo "$commit" | cut -d' ' -f2-)
+
+            # Check if commit follows conventional commits
+            if echo "$MESSAGE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.*\))?!?:"; then
+              echo "✓ Valid: $MESSAGE"
+            else
+              echo "✗ Invalid: $MESSAGE"
+              echo "  Commit messages should follow: type(scope): description"
+              echo "  Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done <<< "$COMMITS"
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "❌ Found $ERRORS commit(s) not following conventional commits format"
+            echo "Please update commit messages to follow the pattern:"
+            echo "  type(scope): description"
+            echo ""
+            echo "Examples:"
+            echo "  feat(api): add new exchange rate endpoint"
+            echo "  fix(cli): correct table rendering issue"
+            echo "  docs: update README with deployment instructions"
+            exit 1
+          else
+            echo ""
+            echo "✅ All commits follow conventional commits format"
+          fi
+
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+  docker-build-check:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./src/HotWind.Api/Dockerfile
+          push: false
+          tags: hotwind-api:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build CLI Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./src/HotWind.Cli/Dockerfile
+          push: false
+          tags: hotwind-cli:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

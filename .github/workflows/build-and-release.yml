@@ -1,0 +1,219 @@
+name: Build, Test, and Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  REGISTRY: docker.io
+  DOCKERHUB_USERNAME: number_27
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for semantic versioning
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/test-results.trx'
+
+  semantic-version:
+    name: Determine Semantic Version
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+      tag: ${{ steps.semver.outputs.tag }}
+      should_release: ${{ steps.semver.outputs.should_release }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate semantic version
+        id: semver
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Parse version
+          VERSION=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Get commits since last tag
+          COMMITS=$(git log $LATEST_TAG..HEAD --oneline 2>/dev/null || git log --oneline)
+
+          # Determine version bump based on conventional commits
+          BREAKING=false
+          FEATURE=false
+          FIX=false
+
+          while IFS= read -r commit; do
+            if echo "$commit" | grep -qE "^[a-f0-9]+ (feat|feature)(\(.*\))?!:"; then
+              BREAKING=true
+            elif echo "$commit" | grep -qE "BREAKING CHANGE"; then
+              BREAKING=true
+            elif echo "$commit" | grep -qE "^[a-f0-9]+ (feat|feature)(\(.*\))?:"; then
+              FEATURE=true
+            elif echo "$commit" | grep -qE "^[a-f0-9]+ (fix|bugfix)(\(.*\))?:"; then
+              FIX=true
+            fi
+          done <<< "$COMMITS"
+
+          # Calculate new version
+          if [ "$BREAKING" = true ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$FEATURE" = true ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$FIX" = true ]; then
+            PATCH=$((PATCH + 1))
+          else
+            # No semantic commit, increment patch
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+
+          # Check if version changed
+          if [ "$LATEST_TAG" = "$NEW_TAG" ]; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+  build-and-push-images:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: semantic-version
+    if: needs.semantic-version.outputs.should_release == 'true'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/hotwind-api
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.semantic-version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./src/HotWind.Api/Dockerfile
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.semantic-version.outputs.version }}
+
+      - name: Extract metadata for CLI
+        id: meta-cli
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/hotwind-cli
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.semantic-version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push CLI image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./src/HotWind.Cli/Dockerfile
+          push: true
+          tags: ${{ steps.meta-cli.outputs.tags }}
+          labels: ${{ steps.meta-cli.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.semantic-version.outputs.version }}
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a ${{ needs.semantic-version.outputs.tag }} -m "Release ${{ needs.semantic-version.outputs.tag }}"
+          git push origin ${{ needs.semantic-version.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.semantic-version.outputs.tag }}
+          name: Release ${{ needs.semantic-version.outputs.tag }}
+          body: |
+            ## Docker Images
+
+            - `${{ env.DOCKERHUB_USERNAME }}/hotwind-api:${{ needs.semantic-version.outputs.version }}`
+            - `${{ env.DOCKERHUB_USERNAME }}/hotwind-cli:${{ needs.semantic-version.outputs.version }}`
+
+            ## Changes
+
+            See commit history for details.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
