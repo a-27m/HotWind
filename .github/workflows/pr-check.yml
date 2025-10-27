@@ -91,7 +91,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build API Docker image (no push)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./src/HotWind.Api/Dockerfile
@@ -101,7 +101,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build CLI Docker image (no push)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./src/HotWind.Cli/Dockerfile
