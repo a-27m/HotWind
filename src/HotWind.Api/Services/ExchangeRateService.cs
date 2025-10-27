@@ -39,6 +39,12 @@ public class ExchangeRateService : IExchangeRateService
 
     public async Task<decimal> GetRateAsync(string fromCurrency, string toCurrency, DateOnly date)
     {
+        // Handle same currency case in service layer
+        if (fromCurrency == toCurrency)
+        {
+            return 1.0m;
+        }
+
         return await _exchangeRateRepository.GetRateAsync(fromCurrency, toCurrency, date);
     }
 
