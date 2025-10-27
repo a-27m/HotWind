@@ -201,7 +201,7 @@ jobs:
           git push origin ${{ needs.semantic-version.outputs.tag }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.semantic-version.outputs.tag }}
           name: Release ${{ needs.semantic-version.outputs.tag }}
