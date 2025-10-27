@@ -11,7 +11,7 @@ on:
 env:
   DOTNET_VERSION: '9.0.x'
   REGISTRY: docker.io
-  DOCKERHUB_USERNAME: number_27
+  DOCKERHUB_USERNAME: number27
 
 jobs:
   build-and-test:

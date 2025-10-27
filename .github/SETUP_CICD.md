@@ -28,14 +28,14 @@ After adding the secret, the workflow will automatically:
 2. Calculate semantic version from commits
 3. Build multi-architecture Docker images
 4. Push to DockerHub as:
-   - `number_27/hotwind-api:latest`
-   - `number_27/hotwind-api:1.0.0`
-   - `number_27/hotwind-api:1.0`
-   - `number_27/hotwind-api:1`
-   - `number_27/hotwind-cli:latest`
-   - `number_27/hotwind-cli:1.0.0`
-   - `number_27/hotwind-cli:1.0`
-   - `number_27/hotwind-cli:1`
+   - `number27/hotwind-api:latest`
+   - `number27/hotwind-api:1.0.0`
+   - `number27/hotwind-api:1.0`
+   - `number27/hotwind-api:1`
+   - `number27/hotwind-cli:latest`
+   - `number27/hotwind-cli:1.0.0`
+   - `number27/hotwind-cli:1.0`
+   - `number27/hotwind-cli:1`
 5. Create GitHub release with version tag
 6. Update git tags
 
@@ -115,7 +115,7 @@ The workflow automatically calculates the next version based on commit messages:
 
 ### DockerHub
 
-- View published images: https://hub.docker.com/u/number_27
+- View published images: https://hub.docker.com/u/number27
 - Check image sizes and layers
 - Verify multi-architecture support (amd64, arm64)
 
@@ -124,15 +124,15 @@ The workflow automatically calculates the next version based on commit messages:
 Each successful build creates multiple tags:
 
 ```
-number_27/hotwind-api:latest       # Always points to latest version
-number_27/hotwind-api:1            # Latest 1.x.x
-number_27/hotwind-api:1.0          # Latest 1.0.x
-number_27/hotwind-api:1.0.0        # Specific version
+number27/hotwind-api:latest       # Always points to latest version
+number27/hotwind-api:1            # Latest 1.x.x
+number27/hotwind-api:1.0          # Latest 1.0.x
+number27/hotwind-api:1.0.0        # Specific version
 ```
 
 For production use, always reference specific versions:
 ```yaml
-image: number_27/hotwind-api:1.0.0
+image: number27/hotwind-api:1.0.0
 ```
 
 ## Troubleshooting
@@ -168,7 +168,7 @@ image: number_27/hotwind-api:1.0.0
 3. **Review Dependabot PRs** for dependency updates
 4. **Scan images** for vulnerabilities:
    ```bash
-   docker scan number_27/hotwind-api:latest
+   docker scan number27/hotwind-api:latest
    ```
 5. **Never commit secrets** to the repository
 6. **Use GitHub Advanced Security** if available

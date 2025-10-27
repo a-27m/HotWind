@@ -1,8 +1,8 @@
 # Default owners for everything in the repo
-* @number_27
+* @a-27m
 
 # Specific ownership patterns
-/src/HotWind.Api/ @number_27
-/src/HotWind.Cli/ @number_27
-/scripts/ @number_27
-/.github/ @number_27
+/src/HotWind.Api/ @a-27m
+/src/HotWind.Cli/ @a-27m
+/scripts/ @a-27m
+/.github/ @a-27m

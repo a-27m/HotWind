@@ -157,12 +157,12 @@ Pre-built Docker images are available on Docker Hub:
 # Run API
 docker run -p 8080:8080 \
   -e ConnectionStrings__DefaultConnection="Host=postgres;Database=hotwind;..." \
-  number_27/hotwind-api:latest
+  number27/hotwind-api:latest
 
 # Run CLI
 docker run -it \
   -e ApiSettings__BaseUrl="http://api:8080" \
-  number_27/hotwind-cli:latest
+  number27/hotwind-cli:latest
 ```
 
 See **[DOCKER.md](DOCKER.md)** for complete deployment guide including Kubernetes best practices.

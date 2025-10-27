@@ -6,8 +6,8 @@ This guide covers deploying HotWind components using Docker containers.
 
 Pre-built images are available on Docker Hub:
 
-- **API**: `number_27/hotwind-api:latest`
-- **CLI**: `number_27/hotwind-cli:latest`
+- **API**: `number27/hotwind-api:latest`
+- **CLI**: `number27/hotwind-cli:latest`
 
 Images are multi-architecture (amd64, arm64) and follow security best practices:
 - Alpine-based for minimal size
@@ -23,7 +23,7 @@ Images are multi-architecture (amd64, arm64) and follow security best practices:
 ```bash
 docker run -p 8080:8080 \
   -e ConnectionStrings__DefaultConnection="Host=postgres;Database=hotwind;Username=hotwind_user;Password=hotwind_pass" \
-  number_27/hotwind-api:latest
+  number27/hotwind-api:latest
 ```
 
 ### With Docker Compose
@@ -53,7 +53,7 @@ services:
       retries: 5
 
   api:
-    image: number_27/hotwind-api:latest
+    image: number27/hotwind-api:latest
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=hotwind;Username=hotwind_user;Password=hotwind_pass"
       ASPNETCORE_ENVIRONMENT: Production
@@ -99,7 +99,7 @@ docker-compose logs -f api
 ```bash
 docker run -it \
   -e ApiSettings__BaseUrl="http://host.docker.internal:8080" \
-  number_27/hotwind-cli:latest
+  number27/hotwind-cli:latest
 ```
 
 ### One-off Commands (Kubernetes CronJob)
@@ -111,7 +111,7 @@ For running specific operations in Kubernetes:
 # for non-interactive execution in Kubernetes CronJobs
 docker run \
   -e ApiSettings__BaseUrl="http://api-service:8080" \
-  number_27/hotwind-cli:latest \
+  number27/hotwind-cli:latest \
   --command generate-rates --start-date 2024-01-01 --end-date 2024-12-31
 ```
 
@@ -251,7 +251,7 @@ Images are tagged with semantic versions:
 For production, always use specific version tags:
 
 ```yaml
-image: number_27/hotwind-api:1.0.0
+image: number27/hotwind-api:1.0.0
 ```
 
 ## Building Custom Images
