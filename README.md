@@ -40,29 +40,34 @@ This project demonstrates:
 ## Quick Start
 
 **Prerequisites:**
-- .NET 9 SDK
-- PostgreSQL 17
-- IDE (Visual Studio, Rider, or VS Code)
+- .NET 9 SDK ([Download](https://dotnet.microsoft.com/download/dotnet/9.0))
+- PostgreSQL 17 ([Download](https://www.postgresql.org/download/))
 
-**Setup:**
+**Setup (5 minutes):**
+
 ```bash
-# Clone and navigate to project
-cd sql-optimizer
+# 1. Create database
+psql -U postgres -c "CREATE DATABASE hotwind;"
+psql -U postgres -c "CREATE USER hotwind_user WITH PASSWORD 'hotwind_pass';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE hotwind TO hotwind_user;"
 
-# Setup database (instructions in DATABASE.md)
-psql -U postgres -f scripts/schema.sql
-psql -U postgres hotwind -f scripts/seed-data.sql
+# 2. Initialize schema
+psql -U hotwind_user -d hotwind -f scripts/schema.sql
 
-# Configure connection strings in appsettings.json
+# 3. Load seed data
+psql -U hotwind_user -d hotwind -f scripts/seed-data.sql
 
-# Run API
-cd src/HotWind.Api
-dotnet run
+# 4. Build solution
+dotnet build
 
-# Run CLI (in separate terminal)
-cd src/HotWind.Cli
-dotnet run
+# 5. Run API (terminal 1)
+cd src/HotWind.Api && dotnet run
+
+# 6. Run CLI (terminal 2)
+cd src/HotWind.Cli && dotnet run
 ```
+
+**See [SETUP.md](SETUP.md) for detailed instructions and troubleshooting.**
 
 ## Project Structure
 
@@ -91,6 +96,64 @@ The system generates three ASCII-formatted reports:
 3. **Currency Translation Report**: Sales analysis showing impact of exchange rate fluctuations over time
 
 All reports demonstrate complex SQL aggregations optimized for performance.
+
+## Quick Reference
+
+### CLI Commands
+- **Create Invoice**: Interactive workflow with customer/product search
+- **Stock Report**: Current inventory with profit margins
+- **Price List Report**: Lot value vs market value comparison
+- **Currency Translation Report**: Exchange rate impact analysis (requires date range)
+- **Generate Exchange Rates**: Backfill missing rates using random walk
+
+### API Endpoints
+```
+POST   /api/invoices                          # Create invoice (FIFO deduction)
+GET    /api/reports/stock                     # Stock report
+GET    /api/reports/price-list                # Price list report
+GET    /api/reports/currency-translation      # Currency report (requires ?from=&to=)
+POST   /api/exchangerates/generate            # Generate rates
+GET    /api/models?search=bosch&inStockOnly=true
+GET    /api/customers?search=kyiv
+```
+
+### Example SQL Query (Stock Report)
+```sql
+-- Demonstrates: CTEs, LATERAL joins, temporal queries, aggregations
+WITH lot_details AS (
+  SELECT pl.sku, pl.quantity_remaining, pl.unit_price_original,
+         v.currency_code, pl.purchase_date
+  FROM purchase_lots pl
+  JOIN purchase_orders po ON pl.po_id = po.po_id
+  JOIN vendors v ON po.vendor_id = v.vendor_id
+  WHERE pl.quantity_remaining > 0
+)
+SELECT ld.sku, hm.model_name,
+       SUM(ld.quantity_remaining) as stock_level,
+       SUM(ld.quantity_remaining * ld.unit_price_original * er.exchange_rate) /
+         SUM(ld.quantity_remaining) as weighted_avg_price_uah
+FROM lot_details ld
+JOIN heater_models hm ON ld.sku = hm.sku
+LATERAL (
+  SELECT exchange_rate FROM exchange_rates
+  WHERE from_currency = ld.currency_code AND to_currency = 'UAH'
+    AND rate_date <= CURRENT_DATE
+  ORDER BY rate_date DESC LIMIT 1
+) er
+GROUP BY ld.sku, hm.model_name;
+```
+
+### Technology Stack
+- **API**: ASP.NET Core 9, Npgsql 9.0, Swashbuckle (Swagger)
+- **CLI**: .NET 9, Spectre.Console 0.49, HttpClient
+- **Database**: PostgreSQL 17
+- **Tests**: xUnit, Moq
+
+## Documentation
+
+- **[DATABASE.md](DATABASE.md)** - Complete schema documentation with ER diagram
+- **[ADR.md](ADR.md)** - Architecture decisions and design patterns
+- **[SETUP.md](SETUP.md)** - Detailed setup guide and troubleshooting
 
 ## License
 
