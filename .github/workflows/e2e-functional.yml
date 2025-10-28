@@ -1,0 +1,109 @@
+name: E2E Functional Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  e2e-functional:
+    name: E2E Functional Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: hotwind
+          POSTGRES_USER: hotwind_user
+          POSTGRES_PASSWORD: hotwind_pass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Initialize database schema
+        run: PGPASSWORD=hotwind_pass psql -h localhost -U hotwind_user -d hotwind -f scripts/schema.sql
+
+      - name: Load seed data
+        run: PGPASSWORD=hotwind_pass psql -h localhost -U hotwind_user -d hotwind -f scripts/seed-data.sql
+
+      - name: Verify database initialization
+        run: |
+          echo "Checking database tables..."
+          PGPASSWORD=hotwind_pass psql -h localhost -U hotwind_user -d hotwind -c "\dt" | grep heater_models
+          PGPASSWORD=hotwind_pass psql -h localhost -U hotwind_user -d hotwind -c "SELECT COUNT(*) FROM heater_models;" | grep -E "[0-9]+"
+          echo "Database initialized successfully"
+
+      - name: Build API
+        run: dotnet build src/HotWind.Api --configuration Release
+
+      - name: Start API in background
+        run: |
+          cd src/HotWind.Api
+          dotnet run --no-build --configuration Release &
+          API_PID=$!
+          echo "API_PID=$API_PID" >> $GITHUB_ENV
+          echo "API started with PID $API_PID"
+
+          # Wait for API to be ready
+          echo "Waiting for API to be ready..."
+          timeout 30 bash -c 'until curl -sf http://localhost:5280/health; do sleep 2; done' || {
+            echo "API failed to start within 30 seconds"
+            exit 1
+          }
+          echo "API is ready!"
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=hotwind;Username=hotwind_user;Password=hotwind_pass"
+          ASPNETCORE_URLS: "http://+:5280"
+          ASPNETCORE_ENVIRONMENT: "Production"
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '1.3.0'
+
+      - name: Create results directory
+        run: mkdir -p tests/e2e/results
+
+      - name: Run functional tests
+        run: k6 run tests/e2e/functional-tests.js
+        env:
+          API_BASE_URL: http://localhost:5280
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-functional-results-${{ github.run_number }}
+          path: tests/e2e/results/*
+          retention-days: 7
+
+      - name: Publish test results to PR
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always() && github.event_name == 'pull_request'
+        with:
+          files: tests/e2e/results/functional-junit.xml
+          check_name: E2E Functional Test Results
+          comment_title: E2E Functional Test Results
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -n "$API_PID" ]; then
+            echo "Stopping API (PID $API_PID)"
+            kill $API_PID 2>/dev/null || true
+          fi

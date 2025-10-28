@@ -173,12 +173,39 @@ See **[DOCKER.md](DOCKER.md)** for complete deployment guide including Kubernete
 - **[ADR.md](ADR.md)** - Architecture decisions and design patterns
 - **[SETUP.md](SETUP.md)** - Detailed setup guide and troubleshooting
 - **[DOCKER.md](DOCKER.md)** - Docker and Kubernetes deployment guide
+- **[tests/e2e/README.md](tests/e2e/README.md)** - End-to-end test suite documentation
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines and commit conventions
+
+## Testing
+
+### Unit Tests
+Core business logic is covered by unit tests using xUnit and Moq:
+```bash
+dotnet test
+```
+
+### End-to-End Tests
+Comprehensive e2e test suite using Grafana k6 validates API correctness and performance:
+- **Functional tests:** All endpoints, business logic, error handling
+- **Load tests:** Performance under concurrent load (10 VUs, 30s)
+
+**Quick start:**
+```bash
+# Ensure API is running
+cd src/HotWind.Api && dotnet run
+
+# Run tests (in another terminal)
+k6 run tests/e2e/functional-tests.js
+```
+
+See **[tests/e2e/README.md](tests/e2e/README.md)** for detailed documentation.
 
 ## CI/CD
 
 This project uses GitHub Actions for automated:
-- Build and test on every push
+- Build and unit tests on every push
+- **E2E functional tests** on every PR and push to main
+- **E2E load tests** on push to main + nightly schedule
 - Semantic versioning based on conventional commits
 - Multi-architecture Docker image builds (amd64, arm64)
 - Automated releases to Docker Hub and GitHub

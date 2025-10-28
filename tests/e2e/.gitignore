@@ -1,0 +1,10 @@
+# Ignore test results
+results/*.json
+results/*.xml
+results/*.html
+
+# Ignore logs
+*.log
+
+# Keep the results directory structure
+!results/.gitkeep

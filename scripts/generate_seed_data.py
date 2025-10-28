@@ -242,6 +242,9 @@ def generate_sql():
 
         selected_models = random.sample(HEATER_MODELS, min(num_items, len(HEATER_MODELS)))
 
+        # Collect lot inserts to output after purchase order
+        lot_inserts = []
+
         for sku, _, _, _, price_range in selected_models:
             # Purchase price in vendor currency
             if vendor_currency == 'USD':
@@ -260,7 +263,7 @@ def generate_sql():
 
             po_total += unit_price * quantity
 
-            output.append(
+            lot_inserts.append(
                 f"INSERT INTO purchase_lots (lot_id, po_id, sku, lot_number, quantity_purchased, "
                 f"quantity_remaining, unit_price_original, purchase_date) "
                 f"VALUES ({lot_id}, {po_id}, '{sku}', '{lot_number}', {quantity}, {quantity}, "
@@ -269,10 +272,14 @@ def generate_sql():
 
             lot_id += 1
 
+        # Insert purchase order first
         output.append(
             f"INSERT INTO purchase_orders (po_id, vendor_id, po_date, total_amount) "
             f"VALUES ({po_id}, {vendor_id}, '{po_date}', {round_decimal(po_total, 2)});"
         )
+
+        # Then insert lots
+        output.extend(lot_inserts)
         output.append("")
 
         po_id += 1
@@ -295,6 +302,9 @@ def generate_sql():
 
         selected_models = random.sample(HEATER_MODELS, min(num_items, len(HEATER_MODELS)))
 
+        # Collect line inserts to output after invoice
+        line_inserts = []
+
         for sku, _, _, _, price_range in selected_models:
             # Sale price in UAH (based on list price with some variation)
             base_price = round_decimal(random.uniform(*price_range), 2)
@@ -305,17 +315,21 @@ def generate_sql():
 
             invoice_total += unit_price * quantity
 
-            output.append(
+            line_inserts.append(
                 f"INSERT INTO invoice_lines (invoice_line_id, invoice_id, sku, quantity_sold, unit_price_uah) "
                 f"VALUES ({invoice_line_id}, {invoice_id}, '{sku}', {quantity}, {unit_price});"
             )
 
             invoice_line_id += 1
 
+        # Insert invoice first
         output.append(
             f"INSERT INTO invoices (invoice_id, customer_id, invoice_date, total_amount) "
             f"VALUES ({invoice_id}, {customer_id}, '{invoice_date}', {round_decimal(invoice_total, 2)});"
         )
+
+        # Then insert lines
+        output.extend(line_inserts)
 
         invoice_id += 1
 
