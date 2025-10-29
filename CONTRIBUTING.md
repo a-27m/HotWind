@@ -79,10 +79,6 @@ Scope is optional but recommended. Common scopes:
 ### Local Development
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/sql-optimizer.git
-cd sql-optimizer
-
 # Create feature branch
 git checkout -b feat/your-feature
 

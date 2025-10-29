@@ -102,24 +102,6 @@ docker run -it \
   number27/hotwind-cli:latest
 ```
 
-### One-off Commands (Kubernetes CronJob)
-
-For running specific operations in Kubernetes:
-
-```bash
-# The CLI will need to be extended to support command-line arguments
-# for non-interactive execution in Kubernetes CronJobs
-docker run \
-  -e ApiSettings__BaseUrl="http://api-service:8080" \
-  number27/hotwind-cli:latest \
-  --command generate-rates --start-date 2024-01-01 --end-date 2024-12-31
-```
-
-**Note**: Current CLI implementation is interactive only. For Kubernetes CronJobs, you would need to:
-1. Add command-line argument parsing
-2. Support non-interactive mode
-3. Return appropriate exit codes
-
 ## Kubernetes Deployment Considerations
 
 ### Security Context
@@ -136,30 +118,6 @@ securityContext:
     drop:
       - ALL
   readOnlyRootFilesystem: true
-```
-
-### Resource Limits
-
-Recommended resource settings:
-
-```yaml
-# API
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "250m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
-
-# CLI (CronJob)
-resources:
-  requests:
-    memory: "128Mi"
-    cpu: "100m"
-  limits:
-    memory: "256Mi"
-    cpu: "250m"
 ```
 
 ### Health Checks
@@ -232,13 +190,6 @@ The API needs:
 The CLI needs:
 - Egress: to API on port 8080
 
-### Persistence
-
-For PostgreSQL in Kubernetes:
-- Use StatefulSet with persistent volumes
-- Configure backup strategy
-- Consider using managed PostgreSQL (CloudSQL, RDS, Azure Database)
-
 ## Image Versions
 
 Images are tagged with semantic versions:
@@ -247,12 +198,6 @@ Images are tagged with semantic versions:
 - `1` - Latest 1.x.x version
 - `1.0` - Latest 1.0.x version
 - `1.0.0` - Specific version
-
-For production, always use specific version tags:
-
-```yaml
-image: number27/hotwind-api:1.0.0
-```
 
 ## Building Custom Images
 
@@ -318,13 +263,6 @@ chown -R 1000:1000 /path/to/volume
 
 ### CLI cannot connect to API
 
-From inside CLI container, test API connectivity:
-
-```bash
-docker exec -it <cli-container> sh
-wget -O- http://api:8080/health
-```
-
 Check network configuration:
 
 ```bash
@@ -332,18 +270,6 @@ docker network inspect <network-name>
 ```
 
 ## Performance Tuning
-
-### .NET Garbage Collection
-
-For containerized workloads:
-
-```yaml
-env:
-  - name: DOTNET_gcServer
-    value: "1"
-  - name: DOTNET_GCHeapHardLimit
-    value: "0x20000000"  # 512MB
-```
 
 ### Connection Pooling
 
@@ -354,32 +280,6 @@ Host=postgres;Database=hotwind;Username=user;Password=pass;
 Minimum Pool Size=0;Maximum Pool Size=20;Connection Idle Lifetime=300
 ```
 
-## Security Best Practices
-
-1. **Use secrets management**: Never hardcode credentials
-2. **Scan images**: Use `docker scan` or Trivy
-3. **Update regularly**: Apply security patches via Dependabot
-4. **Run as non-root**: Already configured in images
-5. **Use specific tags**: Avoid `latest` in production
-6. **Enable read-only filesystem**: Add volumes for writable paths if needed
-7. **Network segmentation**: Use Kubernetes NetworkPolicies
-
-## Monitoring
-
-### Prometheus Metrics
-
-Consider adding prometheus-net for metrics:
-
-```bash
-curl http://localhost:8080/metrics
-```
-
 ### Logging
 
-Logs are written to stdout/stderr and can be collected by:
-- Kubernetes: Fluentd, Fluent Bit
-- Docker Compose: Loki, ELK stack
-
-### Tracing
-
-For distributed tracing, consider adding OpenTelemetry instrumentation.
+Logs are written to stdout/stderr.
