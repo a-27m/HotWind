@@ -42,7 +42,7 @@ public class ReportRepository : IReportRepository
                     er.exchange_rate,
                     (ld.unit_price_original * er.exchange_rate) as unit_price_uah
                 FROM lot_details ld
-                LATERAL (
+                CROSS JOIN LATERAL (
                     SELECT exchange_rate
                     FROM exchange_rates
                     WHERE from_currency = ld.currency_code
@@ -124,7 +124,7 @@ public class ReportRepository : IReportRepository
                     ld.quantity_remaining,
                     (ld.unit_price_original * er.exchange_rate) as unit_price_uah
                 FROM lot_details ld
-                LATERAL (
+                CROSS JOIN LATERAL (
                     SELECT exchange_rate
                     FROM exchange_rates
                     WHERE from_currency = ld.currency_code

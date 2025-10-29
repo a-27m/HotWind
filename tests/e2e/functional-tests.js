@@ -279,7 +279,7 @@ export default function() {
       },
       'invoice has line items': (r) => {
         const body = JSON.parse(r.body);
-        return Array.isArray(body.data.lineItems) && body.data.lineItems.length > 0;
+        return Array.isArray(body.data.lines) && body.data.lines.length > 0;
       }
     });
 
