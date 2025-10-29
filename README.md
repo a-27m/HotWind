@@ -1,3 +1,6 @@
+# Note
+This is me just trying out Claude Code, an **AI Code Generator**. If something doesn't make sense, I probably agree with you.
+
 # HotWind - Industrial Heating Equipment Retail System
 
 A comprehensive educational demonstration project showcasing SQL query optimization techniques and modern .NET 9 features through a realistic B2B retail management system.
@@ -214,7 +217,3 @@ Commit message format determines version bumps:
 - `feat:` → Minor version (1.0.0 → 1.1.0)
 - `fix:` → Patch version (1.0.0 → 1.0.1)
 - `feat!:` or `BREAKING CHANGE:` → Major version (1.0.0 → 2.0.0)
-
-## License
-
-Educational use only.
