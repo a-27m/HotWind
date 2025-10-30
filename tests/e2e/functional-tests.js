@@ -13,7 +13,9 @@ export const options = {
     }
   },
   thresholds: {
-    'http_req_failed': ['rate<0.01'],
+    // Note: http_req_failed threshold removed for functional tests
+    // Functional tests intentionally include error scenarios (404, 400)
+    // Validation is done through explicit checks, not failure rate
     'http_req_duration': ['p(95)<2000']
   }
 };
