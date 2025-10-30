@@ -17,13 +17,13 @@ public class PriceListReportCommand
     {
         try
         {
-            AnsiConsole.Status()
-                .Start("Loading price list report...", ctx =>
+            await AnsiConsole.Status()
+                .StartAsync("Loading price list report...", async ctx =>
                 {
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
 
-                    var report = _apiClient.GetPriceListReportAsync().GetAwaiter().GetResult();
+                    var report = await _apiClient.GetPriceListReportAsync();
                     TableRenderer.RenderPriceListReport(report);
                 });
         }

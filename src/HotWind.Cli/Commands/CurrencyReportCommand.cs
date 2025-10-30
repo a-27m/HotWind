@@ -36,13 +36,13 @@ public class CurrencyReportCommand
                 return;
             }
 
-            AnsiConsole.Status()
-                .Start("Loading currency translation report...", ctx =>
+            await AnsiConsole.Status()
+                .StartAsync("Loading currency translation report...", async ctx =>
                 {
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
 
-                    var report = _apiClient.GetCurrencyTranslationReportAsync(startDate, endDate).GetAwaiter().GetResult();
+                    var report = await _apiClient.GetCurrencyTranslationReportAsync(startDate, endDate);
                     TableRenderer.RenderCurrencyTranslationReport(report, startDate, endDate);
                 });
         }

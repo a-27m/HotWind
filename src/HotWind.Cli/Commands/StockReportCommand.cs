@@ -17,13 +17,13 @@ public class StockReportCommand
     {
         try
         {
-            AnsiConsole.Status()
-                .Start("Loading stock report...", ctx =>
+            await AnsiConsole.Status()
+                .StartAsync("Loading stock report...", async ctx =>
                 {
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
 
-                    var report = _apiClient.GetStockReportAsync().GetAwaiter().GetResult();
+                    var report = await _apiClient.GetStockReportAsync();
                     TableRenderer.RenderStockReport(report);
                 });
         }
