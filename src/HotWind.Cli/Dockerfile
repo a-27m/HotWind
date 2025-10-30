@@ -6,16 +6,14 @@ WORKDIR /src
 COPY ["src/HotWind.Cli/HotWind.Cli.csproj", "HotWind.Cli/"]
 RUN dotnet restore "HotWind.Cli/HotWind.Cli.csproj"
 
-# Copy source code and build
+# Copy source code and publish directly
 COPY src/HotWind.Cli/ HotWind.Cli/
 WORKDIR "/src/HotWind.Cli"
-RUN dotnet build "HotWind.Cli.csproj" -c Release -o /app/build
-
-# Publish stage
-FROM build AS publish
 RUN dotnet publish "HotWind.Cli.csproj" -c Release -o /app/publish \
+    --no-restore \
     /p:UseAppHost=false \
-    --no-restore
+    /p:PublishSingleFile=false \
+    /p:PublishReadyToRun=true
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/runtime:9.0-alpine AS final
@@ -27,7 +25,7 @@ RUN addgroup -g 1000 hotwind && \
 WORKDIR /app
 
 # Copy published application
-COPY --from=publish --chown=hotwind:hotwind /app/publish .
+COPY --from=build --chown=hotwind:hotwind /app/publish .
 
 # Switch to non-root user
 USER hotwind

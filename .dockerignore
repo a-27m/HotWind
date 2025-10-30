@@ -1,0 +1,39 @@
+# Test directories
+tests/
+**/tests/
+
+# Scripts and database files
+scripts/
+*.sql
+
+# Documentation
+*.md
+
+# Git and version control
+.git/
+.gitignore
+
+# GitHub Actions
+.github/
+
+# IDE and editor configs
+.idea/
+.claude/
+.vscode/
+*.DotSettings.user
+*.user
+
+# Build outputs (will be rebuilt in container)
+**/bin/
+**/obj/
+
+# Python
+*.py
+__pycache__/
+*.pyc
+
+# Temporary and log files
+*.log
+*.tmp
+.context.md
+SESSION_HANDOFF.md

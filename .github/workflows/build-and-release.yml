@@ -123,9 +123,89 @@ jobs:
           echo "New version: $NEW_VERSION"
 
   build-and-push-images:
-    name: Build and Push Docker Images
+    name: Build and Push ${{ matrix.image }} Image
     runs-on: ubuntu-latest
     needs: semantic-version
+    if: needs.semantic-version.outputs.should_release == 'true'
+    strategy:
+      matrix:
+        include:
+          - image: api
+            component: HotWind.Api
+            dockerfile: ./src/HotWind.Api/Dockerfile
+            description: API
+          - image: cli
+            component: HotWind.Cli
+            dockerfile: ./src/HotWind.Cli/Dockerfile
+            description: CLI
+            major_only: true
+
+    steps:
+      - name: Check if CLI build should run
+        id: should-build
+        run: |
+          VERSION="${{ needs.semantic-version.outputs.version }}"
+          IS_MAJOR_RELEASE=false
+
+          # Check if this is a major release (version ends with .0.0)
+          if [[ "$VERSION" == *.0.0 ]]; then
+            IS_MAJOR_RELEASE=true
+          fi
+
+          # For CLI, only build on major releases
+          if [[ "${{ matrix.major_only }}" == "true" ]] && [[ "$IS_MAJOR_RELEASE" != "true" ]]; then
+            echo "Skipping CLI build - not a major release"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout code
+        if: steps.should-build.outputs.should_build == 'true'
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        if: steps.should-build.outputs.should_build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.should-build.outputs.should_build == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: steps.should-build.outputs.should_build == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/hotwind-${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.semantic-version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push ${{ matrix.description }} image
+        if: steps.should-build.outputs.should_build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/hotwind-${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/hotwind-${{ matrix.image }}:buildcache,mode=max
+          build-args: |
+            VERSION=${{ needs.semantic-version.outputs.version }}
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [semantic-version, build-and-push-images]
     if: needs.semantic-version.outputs.should_release == 'true'
     permissions:
       contents: write
@@ -133,65 +213,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata for API
-        id: meta-api
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/hotwind-api
-          tags: |
-            type=semver,pattern={{version}},value=${{ needs.semantic-version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-version.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.semantic-version.outputs.version }}
-            type=raw,value=latest
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./src/HotWind.Api/Dockerfile
-          push: true
-          tags: ${{ steps.meta-api.outputs.tags }}
-          labels: ${{ steps.meta-api.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VERSION=${{ needs.semantic-version.outputs.version }}
-
-      - name: Extract metadata for CLI
-        id: meta-cli
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKERHUB_USERNAME }}/hotwind-cli
-          tags: |
-            type=semver,pattern={{version}},value=${{ needs.semantic-version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-version.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.semantic-version.outputs.version }}
-            type=raw,value=latest
-
-      - name: Build and push CLI image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./src/HotWind.Cli/Dockerfile
-          push: true
-          tags: ${{ steps.meta-cli.outputs.tags }}
-          labels: ${{ steps.meta-cli.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            VERSION=${{ needs.semantic-version.outputs.version }}
+          fetch-depth: 0
 
       - name: Create and push git tag
         run: |
@@ -199,6 +222,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a ${{ needs.semantic-version.outputs.tag }} -m "Release ${{ needs.semantic-version.outputs.tag }}"
           git push origin ${{ needs.semantic-version.outputs.tag }}
+
+      - name: Determine CLI build status
+        id: cli-status
+        run: |
+          VERSION="${{ needs.semantic-version.outputs.version }}"
+          if [[ "$VERSION" == *.0.0 ]]; then
+            echo "CLI image was built for this major release"
+            echo "cli_built=true" >> $GITHUB_OUTPUT
+          else
+            echo "CLI image was not built (not a major release)"
+            echo "cli_built=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -209,7 +244,7 @@ jobs:
             ## Docker Images
 
             - `${{ env.DOCKERHUB_USERNAME }}/hotwind-api:${{ needs.semantic-version.outputs.version }}`
-            - `${{ env.DOCKERHUB_USERNAME }}/hotwind-cli:${{ needs.semantic-version.outputs.version }}`
+            ${{ steps.cli-status.outputs.cli_built == 'true' && format('- `{0}/hotwind-cli:{1}`', env.DOCKERHUB_USERNAME, needs.semantic-version.outputs.version) || '- CLI image not built (only built for major releases x.0.0)' }}
 
             ## Changes
 
