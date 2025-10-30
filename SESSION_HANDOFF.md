@@ -1,8 +1,8 @@
 # Session Handoff - E2E Test Suite Implementation
 
-**Date**: 2025-10-29
-**Session Duration**: ~3 hours
-**Status**: E2E test suite implemented and bugs fixed, ready for verification
+**Date**: 2025-10-29 to 2025-10-30
+**Session Duration**: ~4 hours (across 2 sessions)
+**Status**: ✅ COMPLETE - All 60 e2e tests passing (100%)
 
 ---
 
@@ -82,15 +82,26 @@ fix: resolve e2e test failures - LATERAL joins and property names
 - Fixed test property name (lineItems → lines)
 ```
 
+**Commit 3**: `d7586de` (Session 2 - 2025-10-30)
+```
+fix: complete e2e test fixes - all 60 tests passing
+- Fix LEFT JOIN LATERAL syntax in currency translation report
+- Add missing parameter validation in ReportsController
+- Fix invoice payload structure in tests (lineItems → lines, unitPriceUah → unitPrice)
+- Fix price list field names in tests
+Result: 60/60 checks passing (100%)
+```
+
 ---
 
 ## Current State
 
 ### Repository State
 - **Branch**: main
-- **Latest Commit**: 78df154
+- **Latest Commit**: d7586de
 - **Pushed**: ✅ Yes, all changes pushed to GitHub
-- **CI Status**: Workflows triggered, should now pass with fixes
+- **Test Status**: ✅ All 60 tests passing locally (100%)
+- **CI Status**: Will be verified by GitHub Actions workflows
 
 ### Test Results (Before Fixes)
 ```
@@ -102,57 +113,96 @@ Failures:
   ✗ Invalid SKU 400 error - NO BUG (was cascading failure)
 ```
 
-### Test Results (After Fixes - NOT YET RUN)
-**Expected**: 48/48 checks passing (100%)
+### Test Results (After All Fixes - FINAL)
+**Result**: 60/60 checks passing (100%) ✅
+
+**All Issues Fixed:**
+1. ✅ Stock report - LATERAL join syntax fixed
+2. ✅ Price list report - LATERAL join syntax fixed
+3. ✅ Currency report - LEFT JOIN LATERAL syntax fixed
+4. ✅ Invoice line items - Test payload structure fixed
+5. ✅ Price items have pricing fields - DTO property names fixed
+6. ✅ Missing date params returns 400 - API validation added
 
 ---
 
 ## Next Steps (For Next Session)
 
-### Immediate (High Priority)
+### Completed ✅
+1. ✅ **Verify Fixes Work** - All 60 tests passing (100%)
+2. ✅ **Fix All Remaining Issues** - LATERAL joins, validation, test payloads
+3. ✅ **Commit and Push** - Commit d7586de pushed to GitHub
 
-1. **Verify Fixes Work**
-   ```bash
-   # Start API
-   cd src/HotWind.Api && dotnet run
+### Remaining Tasks
 
-   # In another terminal, run tests
-   API_BASE_URL=http://localhost:5000 k6 run tests/e2e/functional-tests.js
-
-   # Expected: All 48 checks passing
-   ```
-
-2. **Check CI Workflows**
+1. **Check CI Workflows** (High Priority)
    ```bash
    gh run list --limit 3
    gh run view <run-id>
    ```
-   - Should see green checkmarks for e2e-functional workflow
-   - Verify artifacts uploaded correctly
+   - Verify e2e-functional workflow passes
+   - Check artifacts uploaded correctly
 
-3. **Run Load Tests** (Optional)
+2. **Run Load Tests** (Optional)
    ```bash
-   API_BASE_URL=http://localhost:5000 k6 run tests/e2e/load-tests.js
+   k6 run tests/e2e/load-tests.js
    ```
+   - Default port 5280 now matches API
+   - Verify performance benchmarks
 
-### Follow-up (Medium Priority)
-
-4. **Review Test Coverage**
-   - Currency translation report uses `LEFT LATERAL` (lines 225, 234)
-   - Verify these work correctly or need `LEFT JOIN LATERAL`
-
-5. **Consider Additional Tests**
+3. **Consider Additional Tests** (Medium Priority)
    - FIFO logic verification (check lot deduction order)
    - Exchange rate generation edge cases
    - Report edge cases (no data, invalid date ranges)
 
-### Documentation Updates (Low Priority)
-
-6. **Update Main README** - Already done ✅
-
-7. **Add Performance Benchmarks** to e2e README
-   - Record baseline p95/p99 response times
+4. **Add Performance Benchmarks** (Low Priority)
+   - Record baseline p95/p99 response times in e2e README
    - Document expected thresholds
+
+---
+
+## Session 2 Summary (2025-10-30)
+
+### What Was Fixed
+
+**Bug 4: Currency Translation Report LEFT LATERAL Syntax**
+- **File**: `src/HotWind.Api/Data/Repositories/ReportRepository.cs`
+- **Lines**: 225, 234
+- **Root Cause**: LEFT outer joins with LATERAL require explicit ON clause
+- **Fix**: Changed `LEFT LATERAL (...)` to `LEFT JOIN LATERAL (...) ON true`
+- **Status**: ✅ Fixed
+
+**Bug 5: Missing Parameter Validation**
+- **File**: `src/HotWind.Api/Controllers/ReportsController.cs`
+- **Root Cause**: `DateOnly` parameters default to MinValue instead of null
+- **Fix**: Changed parameters to `DateOnly?` and added explicit validation
+- **Returns**: 400 Bad Request with error message when params missing
+- **Status**: ✅ Fixed
+
+**Bug 6: Invoice Payload Structure**
+- **File**: `tests/e2e/functional-tests.js`
+- **Lines**: 259, 317, 344 (3 locations)
+- **Root Cause**: Tests used wrong property names
+- **Fix**: Changed `lineItems` → `lines`, `unitPriceUah` → `unitPrice`
+- **Status**: ✅ Fixed
+
+**Bug 7: Price List Field Names**
+- **File**: `tests/e2e/functional-tests.js`
+- **Line**: 398
+- **Root Cause**: Tests used wrong DTO property names
+- **Fix**: Changed to `weightedLotValueUah` and `currentMarketValueUah`
+- **Status**: ✅ Fixed
+
+### Port Configuration Change
+- **Changed from**: Port 5000 (conflicted with OS service)
+- **Changed to**: Port 5280 (matches test defaults)
+- **Method**: `ASPNETCORE_URLS=http://localhost:5280 dotnet run`
+
+### Final Test Results
+```
+checks.........................: 100.00% ✓ 60       ✗ 0
+http_req_duration..............: avg=82.6ms  p(90)=188.71ms p(95)=384.29ms
+```
 
 ---
 
@@ -167,8 +217,9 @@ Failures:
 - **Data**: 28 models, 1464 exchange rates, 15 customers, 300 invoices
 
 ### API Configuration
-- **Current Port**: 5000 (from appsettings.json ASPNETCORE_URLS)
-- **Expected Port**: 5280 (tests default to this)
+- **Current Port**: 5280 (via ASPNETCORE_URLS environment variable)
+- **Previous Port**: 5000 (conflicted with OS service)
+- **Test Default Port**: 5280 (now matches API)
 - **Health Endpoint**: `/health` (already exists at line 74 in Program.cs)
 
 ### Testing Environment
@@ -215,22 +266,21 @@ LEFT JOIN LATERAL (SELECT ...) t2 ON true
 
 ## Potential Issues to Watch
 
-1. **Currency Translation Report** (lines 225, 234 in ReportRepository.cs)
-   - Uses `LEFT LATERAL` syntax
-   - May need to change to `LEFT JOIN LATERAL ... ON true`
-   - NOT tested yet (no failures reported, but worth verifying)
+1. ~~**Currency Translation Report**~~ - ✅ FIXED in Session 2
+   - ~~Uses `LEFT LATERAL` syntax~~
+   - Fixed to use `LEFT JOIN LATERAL ... ON true`
 
-2. **Port Mismatch**
-   - Tests default to port 5280
-   - API currently runs on port 5000 (unless ASPNETCORE_URLS set)
-   - May need to update tests or API config for consistency
+2. ~~**Port Mismatch**~~ - ✅ RESOLVED in Session 2
+   - ~~Tests default to port 5280, API runs on port 5000~~
+   - Now using port 5280 for API via ASPNETCORE_URLS
 
-3. **Test Data Dependencies**
+3. **Test Data Dependencies** - Still applicable
    - Tests assume specific SKUs exist (BOSCH-IH-5000, etc.)
    - Tests assume customer ID 1 exists
    - Fragile if seed data changes significantly
+   - Consider making tests more resilient in future
 
-4. **CI Database**
+4. **CI Database** - Still applicable
    - CI uses service container (localhost)
    - Local testing uses remote DB (192.168.1.201)
    - Different PostgreSQL instances may behave slightly differently
@@ -239,10 +289,10 @@ LEFT JOIN LATERAL (SELECT ...) t2 ON true
 
 ## Questions for User (Next Session)
 
-1. Should we standardize on port 5000 or 5280 for the API?
-2. Should we fix `LEFT LATERAL` in currency report preemptively?
-3. Should we make tests more resilient to seed data changes?
-4. Are there additional edge cases to test?
+1. ~~Should we standardize on port 5000 or 5280 for the API?~~ - ✅ RESOLVED: Using 5280
+2. ~~Should we fix `LEFT LATERAL` in currency report preemptively?~~ - ✅ FIXED in Session 2
+3. Should we make tests more resilient to seed data changes? (Still open)
+4. Are there additional edge cases to test? (Still open)
 
 ---
 
@@ -272,11 +322,14 @@ LEFT JOIN LATERAL (SELECT ...) t2 ON true
 ## Command Quick Reference
 
 ```bash
-# Run functional tests
-API_BASE_URL=http://localhost:5000 k6 run tests/e2e/functional-tests.js
+# Run functional tests (defaults to port 5280)
+k6 run tests/e2e/functional-tests.js
 
-# Run load tests
-API_BASE_URL=http://localhost:5000 k6 run tests/e2e/load-tests.js
+# Run load tests (defaults to port 5280)
+k6 run tests/e2e/load-tests.js
+
+# Start API on port 5280
+cd src/HotWind.Api && ASPNETCORE_URLS=http://localhost:5280 dotnet run
 
 # Check CI status
 gh run list --limit 5
@@ -284,14 +337,12 @@ gh run list --limit 5
 # View test results locally
 cat tests/e2e/results/functional-summary.json | jq '.metrics'
 
-# Start API
-cd src/HotWind.Api && dotnet run
-
 # Check database
 PGPASSWORD='hotwind_pass' psql -h 192.168.1.201 -p 5432 -U hotwind_user -d hotwind -c "SELECT COUNT(*) FROM heater_models;"
 ```
 
 ---
 
-**Session End**: 2025-10-29 01:15 CET
-**Status**: ✅ All fixes committed and pushed, ready for verification
+**Session 1 End**: 2025-10-29 01:15 CET
+**Session 2 End**: 2025-10-30 13:40 CET
+**Final Status**: ✅ COMPLETE - All 60 tests passing, all fixes committed and pushed
