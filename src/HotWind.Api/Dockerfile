@@ -11,9 +11,7 @@ COPY src/HotWind.Api/ HotWind.Api/
 WORKDIR "/src/HotWind.Api"
 RUN dotnet publish "HotWind.Api.csproj" -c Release -o /app/publish \
     --no-restore \
-    /p:UseAppHost=false \
-    /p:PublishSingleFile=false \
-    /p:PublishReadyToRun=true
+    /p:UseAppHost=false
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS final

@@ -11,9 +11,7 @@ COPY src/HotWind.Cli/ HotWind.Cli/
 WORKDIR "/src/HotWind.Cli"
 RUN dotnet publish "HotWind.Cli.csproj" -c Release -o /app/publish \
     --no-restore \
-    /p:UseAppHost=false \
-    /p:PublishSingleFile=false \
-    /p:PublishReadyToRun=true
+    /p:UseAppHost=false
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/runtime:9.0-alpine AS final
