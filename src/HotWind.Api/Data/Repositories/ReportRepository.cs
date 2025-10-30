@@ -222,7 +222,7 @@ public class ReportRepository : IReportRepository
                     hist_er.exchange_rate as historical_rate,
                     curr_er.exchange_rate as current_rate
                 FROM lot_purchase_info lpi
-                LEFT LATERAL (
+                LEFT JOIN LATERAL (
                     SELECT exchange_rate
                     FROM exchange_rates
                     WHERE from_currency = COALESCE(lpi.currency_code, 'UAH')
@@ -230,8 +230,8 @@ public class ReportRepository : IReportRepository
                       AND rate_date <= lpi.invoice_date
                     ORDER BY rate_date DESC
                     LIMIT 1
-                ) hist_er
-                LEFT LATERAL (
+                ) hist_er ON true
+                LEFT JOIN LATERAL (
                     SELECT exchange_rate
                     FROM exchange_rates
                     WHERE from_currency = COALESCE(lpi.currency_code, 'UAH')
@@ -239,7 +239,7 @@ public class ReportRepository : IReportRepository
                       AND rate_date <= CURRENT_DATE
                     ORDER BY rate_date DESC
                     LIMIT 1
-                ) curr_er
+                ) curr_er ON true
             )
             SELECT
                 swr.sku,

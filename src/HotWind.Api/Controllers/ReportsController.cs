@@ -54,12 +54,18 @@ public class ReportsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<CurrencyTranslationReportItemDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<List<CurrencyTranslationReportItemDto>>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<List<CurrencyTranslationReportItemDto>>>> GetCurrencyTranslationReport(
-        [FromQuery] DateOnly from,
-        [FromQuery] DateOnly to)
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to)
     {
+        if (!from.HasValue || !to.HasValue)
+        {
+            return BadRequest(ApiResponse<List<CurrencyTranslationReportItemDto>>.Fail(
+                "Both 'from' and 'to' date parameters are required"));
+        }
+
         try
         {
-            var report = await _reportService.GetCurrencyTranslationReportAsync(from, to);
+            var report = await _reportService.GetCurrencyTranslationReportAsync(from.Value, to.Value);
             return Ok(ApiResponse<List<CurrencyTranslationReportItemDto>>.Ok(report));
         }
         catch (ArgumentException ex)

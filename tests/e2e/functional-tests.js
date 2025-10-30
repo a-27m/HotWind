@@ -256,11 +256,11 @@ export default function() {
     const invoicePayload = JSON.stringify({
       customerId: testData.validCustomerId,
       invoiceDate: '2024-12-15',
-      lineItems: [
+      lines: [
         {
           sku: testData.validSku,
           quantity: 1,
-          unitPriceUah: 25000.00
+          unitPrice: 25000.00
         }
       ]
     });
@@ -314,11 +314,11 @@ export default function() {
     const invalidCustomerPayload = JSON.stringify({
       customerId: 999999,
       invoiceDate: '2024-12-15',
-      lineItems: [
+      lines: [
         {
           sku: testData.validSku,
           quantity: 1,
-          unitPriceUah: 25000.00
+          unitPrice: 25000.00
         }
       ]
     });
@@ -341,11 +341,11 @@ export default function() {
     const invalidSkuPayload = JSON.stringify({
       customerId: testData.validCustomerId,
       invoiceDate: '2024-12-15',
-      lineItems: [
+      lines: [
         {
           sku: 'INVALID-SKU-999',
           quantity: 1,
-          unitPriceUah: 25000.00
+          unitPrice: 25000.00
         }
       ]
     });
@@ -395,7 +395,7 @@ export default function() {
       'price items have pricing fields': (r) => {
         const body = JSON.parse(r.body);
         const item = body.data[0];
-        return item.weightedAvgPriceUah !== undefined && item.listPriceUah !== undefined;
+        return item.weightedLotValueUah !== undefined && item.currentMarketValueUah !== undefined;
       }
     });
 
@@ -419,7 +419,7 @@ export default function() {
       }
     });
 
-    // GET /api/reports/currency-translation (missing parameters) - 400 test
+    // GET /api/reports/currency-translation (missing parameters) - 400/422 test
     const missingParamsRes = http.get(`${BASE_URL}/api/reports/currency-translation`);
     check(missingParamsRes, {
       'missing date params returns 400': (r) => r.status === 400
